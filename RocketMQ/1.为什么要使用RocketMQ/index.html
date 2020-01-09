@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 3.9.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png?v=7.4.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png?v=7.4.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png?v=7.4.0">
+  <link rel="mask-icon" href="/images/safari-pinned-tab.svg?v=7.4.0" color="#222">
+  <link rel="alternate" href="/atom.xml" title="Renekt" type="application/atom+xml">
+
+<link rel="stylesheet" href="/css/main.css?v=7.4.0">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.4.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":true},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: '复制',
+      copy_success: '复制成功',
+      copy_failure: '复制失败'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="动机​    早些时候，我们基于ActiveMQ5.x(大于5.3)去构建分布式消息中间件，我们在多种业务之间使用它进行异步通讯，比如搜索，社交网络活动流，数据管道流，甚至用它来处理交易流程。随着我们订单业务的增长， 来自我们的消息集群的压力也变得越来越大。">
+<meta name="keywords" content="RocketMQ">
+<meta property="og:type" content="article">
+<meta property="og:title" content="为什么要使用RocketMQ">
+<meta property="og:url" content="https://blog.renekt.com/RocketMQ/1.为什么要使用RocketMQ/index.html">
+<meta property="og:site_name" content="Renekt">
+<meta property="og:description" content="动机​    早些时候，我们基于ActiveMQ5.x(大于5.3)去构建分布式消息中间件，我们在多种业务之间使用它进行异步通讯，比如搜索，社交网络活动流，数据管道流，甚至用它来处理交易流程。随着我们订单业务的增长， 来自我们的消息集群的压力也变得越来越大。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-01-09T14:59:26.378Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="为什么要使用RocketMQ">
+<meta name="twitter:description" content="动机​    早些时候，我们基于ActiveMQ5.x(大于5.3)去构建分布式消息中间件，我们在多种业务之间使用它进行异步通讯，比如搜索，社交网络活动流，数据管道流，甚至用它来处理交易流程。随着我们订单业务的增长， 来自我们的消息集群的压力也变得越来越大。">
+  <link rel="canonical" href="https://blog.renekt.com/RocketMQ/1.为什么要使用RocketMQ/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>为什么要使用RocketMQ | Renekt</title>
+  
+
+
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?0c5995767da918ad47b60c628cb3e213";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Renekt</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+      
+        
+        <li class="menu-item menu-item-home">
+      
+    
+      
+      
+        
+      
+        
+      
+        
+      
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-about">
+      
+    
+      
+      
+        
+      
+        
+      
+        
+      
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-tags">
+      
+    
+      
+      
+        
+      
+        
+      
+        
+          
+        
+      
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签<span class="badge">4</span></a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-categories">
+      
+    
+      
+      
+        
+      
+        
+          
+        
+      
+        
+      
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类<span class="badge">4</span></a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档<span class="badge">16</span></a>
+
+  </li>
+      
+      
+      
+        
+        <li class="menu-item menu-item-commonweal">
+      
+    
+      
+      
+        
+      
+        
+      
+        
+      
+    
+
+    <a href="/404.html" rel="section"><i class="menu-item-icon fa fa-fw fa-heartbeat"></i> <br>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a href="javascript:;" class="popup-trigger">
+        
+          <i class="menu-item-icon fa fa-search fa-fw"></i> <br>搜索</a>
+      </li>
+    
+  </ul>
+
+    
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="none"
+           placeholder="搜索..." spellcheck="false"
+           type="text" id="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+      <article itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block post">
+    <link itemprop="mainEntityOfPage" href="https://blog.renekt.com/RocketMQ/1.为什么要使用RocketMQ/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Jip">
+      <meta itemprop="description" content="骑上我心爱的小摩托，嘟嘟嘟嘟嘟嘟">
+      <meta itemprop="image" content="/images/header.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Renekt">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">为什么要使用RocketMQ
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              
+                
+              
+
+              <time title="创建时间：2019-09-20 08:57:32" itemprop="dateCreated datePublished" datetime="2019-09-20T08:57:32+08:00">2019-09-20</time>
+            </span>
+          
+            
+
+            
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-01-09 22:59:26" itemprop="dateModified" datetime="2020-01-09T22:59:26+08:00">2020-01-09</time>
+              </span>
+            
+          
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/RocketMQ/" itemprop="url" rel="index"><span itemprop="name">RocketMQ</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="动机"><a href="#动机" class="headerlink" title="动机"></a>动机</h1><p>​    早些时候，我们基于<code>ActiveMQ5.x(大于5.3)</code>去构建分布式消息中间件，我们在多种业务之间使用它进行异步通讯，比如搜索，社交网络活动流，数据管道流，甚至用它来处理交易流程。随着我们订单业务的增长， 来自我们的消息集群的压力也变得越来越大。 </p>
+<a id="more"></a>
+
+<h1 id="为什么选择RocketMQ？"><a href="#为什么选择RocketMQ？" class="headerlink" title="为什么选择RocketMQ？"></a>为什么选择RocketMQ？</h1><p>​    我们发现，随着队列数量和虚拟<code>Topic</code>数量的增加，<code>ActiveMQ</code>的<code>IO</code>模块会到达一个瓶颈，我们尝试通过节流、断路或降级去解决这个问题，但是效果并不是很好。所以我们开始关注当时比较流行的消息解决方案：<code>Kafka</code>。不幸的是，<code>Kafka</code>并不能满足我们的需求，尤其是在低延迟和高可靠性方面。 点击<a href="http://rocketmq.apache.org/rocketmq/how-to-support-more-queues-in-rocketmq/" target="_blank" rel="noopener">这里</a> 查看详情。</p>
+<p>​    基于以上情况，我们决定自己开发一个新的消息引擎来应对更广泛的应用场景，包括从传统的订阅发布到海量实时零丢失的交易系统。 我们认为这个解决方案是对大家有用的，因此我们希望向社区开放它。  如今，超过100家公司在其业务中使用了RocketMQ的开源版本。</p>
+<p> 下表展示了<code>RocketMQ</code>、<code>ActiveMQ</code>和<code>Kafka</code>( <a href="https://github.com/akullpp/awesome-java" target="_blank" rel="noopener">awesome-java</a> 榜单中的<code>Apache</code>最受欢迎的消息解决方案)之间的比较 </p>
+<h1 id="RocketMQ-vs-ActiveMQ-vs-Kafka"><a href="#RocketMQ-vs-ActiveMQ-vs-Kafka" class="headerlink" title="RocketMQ vs. ActiveMQ vs. Kafka"></a>RocketMQ vs. ActiveMQ vs. Kafka</h1><p>​    请注意，本文档由RocketMQ团队编写。尽管理想的情况是对技术和功能进行无私的比较，但作者的专业知识和偏见显然会偏向RocketMQ。</p>
+<p> 下表是一目了然的快速参考，可快速发现RocketMQ及其最受欢迎的替代产品之间的差异</p>
+<table>
+<thead>
+<tr>
+<th align="left">Messaging Product</th>
+<th align="left">Client SDK</th>
+<th align="left">Protocol and Specification</th>
+<th align="left">Ordered Message</th>
+<th align="left">Scheduled Message</th>
+<th align="left">Batched Message</th>
+<th align="left">BroadCast Message</th>
+<th align="left">Message Filter</th>
+<th align="left">Server Triggered Redelivery</th>
+<th align="left">Message Storage</th>
+<th align="left">Message Retroactive</th>
+<th align="left">Message Priority</th>
+<th align="left">High Availability and Failover</th>
+<th align="left">Message Track</th>
+<th align="left">Configuration</th>
+<th align="left">Management and Operation Tools</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">ActiveMQ</td>
+<td align="left">Java, .NET, C++ etc.</td>
+<td align="left">Push model, support OpenWire, STOMP, AMQP, MQTT, JMS</td>
+<td align="left">Exclusive Consumer or Exclusive Queues can ensure ordering</td>
+<td align="left">Supported</td>
+<td align="left">Not Supported</td>
+<td align="left">Supported</td>
+<td align="left">Supported</td>
+<td align="left">Not Supported</td>
+<td align="left">Supports very fast persistence using JDBC along with a high performance journal，such as levelDB, kahaDB</td>
+<td align="left">Supported</td>
+<td align="left">Supported</td>
+<td align="left">Supported, depending on storage,if using kahadb it requires a ZooKeeper server</td>
+<td align="left">Not Supported</td>
+<td align="left">The default configuration is low level, user need to optimize the configuration parameters</td>
+<td align="left">Supported</td>
+</tr>
+<tr>
+<td align="left">Kafka</td>
+<td align="left">Java, Scala etc.</td>
+<td align="left">Pull model, support TCP</td>
+<td align="left">Ensure ordering of messages within a partition</td>
+<td align="left">Not Supported</td>
+<td align="left">Supported, with async producer</td>
+<td align="left">Not Supported</td>
+<td align="left">Supported, you can use Kafka Streams to filter messages</td>
+<td align="left">Not Supported</td>
+<td align="left">High performance file storage</td>
+<td align="left">Supported offset indicate</td>
+<td align="left">Not Supported</td>
+<td align="left">Supported, requires a ZooKeeper server</td>
+<td align="left">Not Supported</td>
+<td align="left">Kafka uses key-value pairs format for configuration. These values can be supplied either from a file or programmatically.</td>
+<td align="left">Supported, use terminal command to expose core metrics</td>
+</tr>
+<tr>
+<td align="left">RocketMQ</td>
+<td align="left">Java, C++, Go</td>
+<td align="left">Pull model, support TCP, JMS, OpenMessaging</td>
+<td align="left">Ensure strict ordering of messages,and can scale out gracefully</td>
+<td align="left">Supported</td>
+<td align="left">Supported, with sync mode to avoid message loss</td>
+<td align="left">Supported</td>
+<td align="left">Supported, property filter expressions based on SQL92</td>
+<td align="left">Supported</td>
+<td align="left">High performance and low latency file storage</td>
+<td align="left">Supported timestamp and offset two indicates</td>
+<td align="left">Not Supported</td>
+<td align="left">Supported, Master-Slave model, without another kit</td>
+<td align="left">Supported</td>
+<td align="left">Work out of box,user only need to pay attention to a few configurations</td>
+<td align="left">Supported, rich web and terminal command to expose core metrics</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+        
+      
+        <div id="reward-container">
+  <div>坚持原创技术分享，您的支持将鼓励我继续创作！</div>
+  <button id="reward-button" disable="enable" onclick="var qr = document.getElementById(&quot;qr&quot;); qr.style.display = (qr.style.display === 'none') ? 'block' : 'none';">
+    打赏
+  </button>
+  <div id="qr" style="display: none;">
+        
+      
+      <div style="display: inline-block">
+        <img src="/images/wechatpay.png" alt="Jip 微信支付">
+        <p>微信支付</p>
+      </div>
+        
+      
+      <div style="display: inline-block">
+        <img src="/images/alipay.png" alt="Jip 支付宝">
+        <p>支付宝</p>
+      </div>
+
+  </div>
+</div>
+
+      
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>Jip</li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://blog.renekt.com/RocketMQ/1.为什么要使用RocketMQ/" title="为什么要使用RocketMQ">https://blog.renekt.com/RocketMQ/1.为什么要使用RocketMQ/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！</li>
+</ul>
+</div>
+
+      
+
+      <footer class="post-footer">
+          
+            
+          
+          <div class="post-tags">
+            
+              <a href="/tags/RocketMQ/" rel="tag"># RocketMQ</a>
+            
+          </div>
+        
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/RocketMQ/11.事务消息示例/" rel="next" title="RocketMQ事务消息">
+                  <i class="fa fa-chevron-left"></i> RocketMQ事务消息
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/RocketMQ/10.开放消息示例/" rel="prev" title="RocketMQ开放消息">
+                  RocketMQ开放消息 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </div>
+  
+  
+  
+  </article>
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#动机"><span class="nav-number">1.</span> <span class="nav-text">动机</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#为什么选择RocketMQ？"><span class="nav-number">2.</span> <span class="nav-text">为什么选择RocketMQ？</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#RocketMQ-vs-ActiveMQ-vs-Kafka"><span class="nav-number">3.</span> <span class="nav-text">RocketMQ vs. ActiveMQ vs. Kafka</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image"
+      src="/images/header.jpg"
+      alt="Jip">
+  <p class="site-author-name" itemprop="name">Jip</p>
+  <div class="site-description" itemprop="description">骑上我心爱的小摩托，嘟嘟嘟嘟嘟嘟</div>
+</div>
+  <nav class="site-state motion-element">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">16</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-categories">
+        
+          
+            <a href="/categories/">
+          
+        
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+          
+            <a href="/tags/">
+          
+        
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">标签</span>
+        </a>
+      </div>
+    
+  </nav>
+  <div class="feed-link motion-element">
+    <a href="/atom.xml" rel="alternate">
+      <i class="fa fa-rss"></i>RSS
+    </a>
+  </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+      
+      
+        
+      
+      
+        
+      
+        <a href="https://github.com/renekt" title="GitHub &rarr; https://github.com/renekt" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+    
+      <span class="links-of-author-item">
+      
+      
+        
+      
+      
+        
+      
+        <a href="/jip_peng@126.com" title="E-Mail &rarr; jip_peng@126.com"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+    
+      <span class="links-of-author-item">
+      
+      
+        
+      
+      
+        
+      
+        <a href="https://weibo.com/1367847730" title="Weibo &rarr; https://weibo.com/1367847730" rel="noopener" target="_blank"><i class="fa fa-fw fa-weibo"></i>Weibo</a>
+      </span>
+    
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    
+  
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      Links
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="http://example.com" title="http://example.com" rel="noopener" target="_blank">TestTitle</a>
+        </li>
+      
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; 2015 – <span itemprop="copyrightYear">2020</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Jip</span>
+</div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+  
+    <span class="post-meta-divider">|</span>
+  
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+
+
+  <script src="/lib/anime.min.js?v=3.1.0"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+<script src="/js/utils.js?v=7.4.0"></script><script src="/js/motion.js?v=7.4.0"></script>
+<script src="/js/schemes/muse.js?v=7.4.0"></script>
+
+<script src="/js/next-boot.js?v=7.4.0"></script>
+
+
+
+  
+
+
+
+
+
+
+
+
+  <script src="/js/local-search.js?v=7.4.0"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
